@@ -2,30 +2,32 @@ import pygame as pg
 import numpy as np
 from scipy.signal import convolve2d
 from scipy.ndimage import gaussian_filter
+from numpy import fft
 
 def gauss(x, mu, sigma) : 
     return np.exp(-0.5*((x-mu)/sigma)**2)
 
 class Grille:
-    def __init__(self, radius : int, mu = 0.5, sigma = 0.15, color_life=pg.Color("black"), color_dead=pg.Color("white")):
-    	#On crée un nouveau init qui a pour but d'adopter les anneaux, gauss etc
-        y, x = np.ogrid[-radius: radius, -radius : radius]
-        distance = np.sqrt((1+x)**2+(1+y)**2)/radius
+    def __init__(self,N : int, M: int, radius : int, mu = 0.5, sigma = 0.15):
+    	#On ajoute la méthode de la fft et ifft 
+        y, x = np.ogrid[-N//2: N//2, -M//2 : M//2]
+        distance = np.sqrt((x)**2+(y)**2)/radius
         self.kernel = gauss(distance, mu, sigma)
         self.kernel[distance> 1] = 0 
         self.kernel /= np.sum(self.kernel) 
- 
+        self.kernel_fft = fft.fft2(np.fft.fftshift(self.kernel))
+
     def accroissement(self,x, mu = 0.15, sigma = 0.015) : 
     	return -1 + 2 * gauss(x,mu, sigma)
 
     def compute_next_iteration(self, cells, dt = 0.1):
-    	energy = convolve2d(cells, self.kernel, mode='same', boundary='wrap')
-    	acc = self.accroissement(energy)
-    	cells = np.clip(cells + dt *acc, 0, 1)
-    	return cells
+        energy = fft.ifft2(self.kernel_fft*fft.fft2(cells) ) #On fait la ifft et on recupere que les valeurs réels
+        energy = np.real(energy)
+        acc = self.accroissement(energy)
+        cells = np.clip(cells + dt *acc, 0, 1)
+        return cells
 
 class Drawing:
-#Nouveau Drawing
     def __init__(self, width = 800, height = 600):
         self.colors = np.array([np.ogrid[0.:255.:256j], np.ogrid[0.:255.:256j], np.ogrid[0.:255.:256j]]).T
         self.dimensions = (width, height)
@@ -45,12 +47,6 @@ if __name__ == '__main__':
 
     pg.init()
     
-    #N = 512
-    #M = int(np.ceil((16*N)/9))
-    # Gaussian spot centered in the middle
-    #radius = 36
-    #y, x = np.ogrid[-N//2:N//2, -M//2:M//2]
-    #cells = np.exp(-0.5 * (x*x + y*y) / (radius*radius))
     N = 256
     M = int(np.ceil((16*N)/9))
 
@@ -58,8 +54,8 @@ if __name__ == '__main__':
     cells = np.zeros((N,M))
     pos_x = M//6
     pos_y = N//6
-    cells[pos_x:(pos_x + orbium.shape[1]), pos_y:(pos_y + orbium.shape[0])] = orbium.T    
-    grid = Grille( radius = 13)
+    cells[pos_x:(pos_x + orbium.shape[1]), pos_y:(pos_y + orbium.shape[0])] = orbium.T
+    grid = Grille( N,M,radius = 13)
     appli = Drawing()
 
     mustContinue = True
