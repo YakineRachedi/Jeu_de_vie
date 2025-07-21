@@ -16,19 +16,28 @@ class Grille:
         self.col_life = color_life
         self.col_dead = color_dead
 
+
+    def h(self,x) : 
+    	return np.where((x <= 1) | (x >= 4), -1, np.where(x == 2, 0, 1))
+
     def compute_next_iteration(self):
         # Noyau de convolution pour compter les voisins
         kernel = np.array([[1, 1, 1],
-                           [1, 0, 1],
-                           [1, 1, 1]])
+                            [1, 0, 1],
+                            [1, 1, 1]])
 
         # Calcul du nombre de voisins vivants pour chaque cellule
         voisins = convolve2d(self.cells, kernel, mode='same', boundary='wrap')
-        # Application des règles du jeu de la vie
-        next_cells = (voisins == 3) |((self.cells) &(voisins == 2))
+        
+        # Applifation de h a chaque cellule 
+        h_values = self.h(voisins)
+        
+        # Addition entre cell et h avec clip
+        next_cells = np.clip(self.cells + h_values, 0, 1)
+        
         # Mise à jour de la grille
         self.cells = next_cells
-        
+
 class App:
     def __init__(self, geometry, grid):
         self.grid = grid
@@ -80,7 +89,7 @@ if __name__ == '__main__':
         "u": ((200, 200), [(101, 101), (102, 102), (103, 102), (103, 101), (104, 103), (105, 103), (105, 102), (105, 101), (105, 105), (103, 105), (102, 105), (101, 105), (101, 104)]),
         "flat": ((200, 400), [(80, 200), (81, 200), (82, 200), (83, 200), (84, 200), (85, 200), (86, 200), (87, 200), (89, 200), (90, 200), (91, 200), (92, 200), (93, 200), (97, 200), (98, 200), (99, 200), (106, 200), (107, 200), (108, 200), (109, 200), (110, 200), (111, 200), (112, 200), (114, 200), (115, 200), (116, 200), (117, 200), (118, 200)])
     }
-    choice = 'toad'
+    choice = 'glider_gun'
     if len(sys.argv) > 1:
         choice = sys.argv[1]
     resx = 800
